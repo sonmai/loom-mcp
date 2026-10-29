@@ -3,9 +3,9 @@
 A personal, read-only Loom MCP server for local clients on macOS. Python, uv,
 the official MCP Python SDK, and HTTPX. Exactly three tools; stdio only.
 
-Dependencies are installed and MCP Inspector has verified stdio connection and
-discovery of exactly three read-only tools. Four parsing tests pass. Live video
-verification is pending a readable Keychain cookie; see [verification status](docs/verification.md).
+Verified with MCP Inspector, Claude Code, and Codex CLI: metadata, timestamped
+transcript, and three readable frames with existing file paths. Four parsing
+tests pass. See [verification status](docs/verification.md) for evidence and scope.
 
 ## Setup
 

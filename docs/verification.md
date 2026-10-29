@@ -14,19 +14,53 @@
 - `.venv/bin/python -m unittest discover -s tests -v`: 4 tests passed, covering
   URL/ID parsing, timestamp conversion, invalid input, and duration bounds.
 
-## Blocker
+## Live acceptance checks
 
-Inspector `get_video` for `2d424ca8b7b04839ae7e57086030efb0` returned `isError: true`:
-the Loom cookie is missing or Keychain access was denied. The result included
-the documented cookie-refresh instructions and did not expose a cookie.
-No title assertion has passed. The Keychain read failed before an authenticated
-Loom request could be made.
+After the user saved the cookie in Keychain, all three tools succeeded in
+Inspector CLI, followed by Claude Code and Codex CLI using their installed
+user configurations. The clients were launched from `/private/tmp`, outside
+the repository, confirming the absolute-directory entry point works.
 
-## Pending
+Test video: `https://www.loom.com/share/2d424ca8b7b04839ae7e57086030efb0`.
 
-1. Save/allow access to the `loom-mcp` / `connect.sid` Keychain item.
-2. Retry Inspector metadata, transcript, and frames at 39, 74, and 99 seconds.
-   Check title, initial transcript text, image readability, and file existence.
-3. Install in the two selected clients and repeat those same checks.
+| Check | Inspector | Claude Code | Codex CLI |
+| --- | --- | --- | --- |
+| Exact name: `Creative-Campaign Association Portal Sync Issue` | Pass | Pass | Pass |
+| Transcript starts `Hey, so, this is kind of hard to explain` | Pass | Pass | Pass |
+| Frames at 39, 74, and 99 seconds | Pass | Pass | Pass |
+| Three PNG image blocks and three absolute paths | Pass | Pass | Pass |
+| Returned images match existing PNG files | Pass | Pass | Pass |
+| Frame content is readable | Visually inspected | Client described each image | Client described each image |
 
-No client configuration has been changed and no commit has been pushed.
+Metadata returned duration `114.538667` seconds. The transcript contains eight
+segments, starting at `0.011` seconds; speakers are unavailable and returned as
+null. Each PNG is 1280 by 720 pixels.
+
+The frames show the Creative Requests page at 0:39, the Manage Associations panel
+at 1:14, and the Orders page at 1:39. Files exist under
+`~/Library/Caches/loom-mcp/2d424ca8b7b04839ae7e57086030efb0/frames/`:
+
+- `39.0s.png`
+- `74.0s.png`
+- `99.0s.png`
+
+The client event logs were parsed to check actual tool results, exact title,
+transcript prefix, image counts, and byte-for-byte equality of each image with
+its returned file path. Client final-answer claims were not the sole evidence.
+Verification logs and media are kept outside the repository.
+
+## Installed configurations
+
+- Claude Code: `loom` at user scope in `~/.claude.json`; `claude mcp get loom`
+  reports Connected when run with normal local filesystem access.
+- Codex CLI: global `loom` entry in `~/.codex/config.toml`, enabled with stdio.
+- Both launch `/Users/test/.local/bin/uv run --directory
+  /Users/test/PersonalProjects/mcp-loom loom-mcp`, without credential variables.
+
+The initial missing-cookie failure returned the documented refresh instructions
+without exposing a cookie. A sandboxed connection-status probe also failed
+because the sandbox restricts uv's normal cache; the same probe succeeded with
+normal local access. Actual client tool calls succeeded.
+
+No code changes were required after the approved draft. The other four documented
+clients have not been runtime-tested. No commit has been pushed.
