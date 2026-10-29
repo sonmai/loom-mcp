@@ -1,6 +1,7 @@
-# Full code draft for approval
+# Original code review (historical)
 
-Code approved for installation. See [current verification status](verification.md),
+This is the original approved code snapshot, before the guided installer.
+Current implementation lives under `src/loom_mcp`. See [current verification status](verification.md),
 [upstream research and layout](upstream.md),
 [README and all six client configurations](../README.md), and
 [MIT notice](../THIRD_PARTY_NOTICES.md).

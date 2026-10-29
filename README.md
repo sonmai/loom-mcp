@@ -4,37 +4,105 @@ A personal, read-only Loom MCP server for local clients on macOS. Python, uv,
 the official MCP Python SDK, and HTTPX. Exactly three tools; stdio only.
 
 Verified with MCP Inspector, Claude Code, and Codex CLI: metadata, timestamped
-transcript, and three readable frames with existing file paths. Four parsing
-tests pass. See [verification status](docs/verification.md) for evidence and scope.
+transcript, and three readable frames with existing file paths. Focused parsing
+and setup tests pass. See [verification status](docs/verification.md) for evidence
+and scope.
 
-## Quick install
+## Install
 
-Requires macOS, [uv](https://docs.astral.sh/uv/getting-started/installation/),
-and ffmpeg at `/opt/homebrew/bin/ffmpeg`.
+On your Mac, paste this into Terminal:
 
-**1. Install directly from GitHub.** No clone or repository path needed.
+```sh
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/sonmai/mcp-loom/main/install.sh)"
+```
+
+The installer checks prerequisites, asks before installing anything missing,
+installs Loom MCP, and opens a setup wizard:
+
+1. Choose the local clients you use.
+2. Copy your Loom `connect.sid` cookie from your browser when prompted.
+3. Paste it into macOS's hidden password prompt, then restart your clients.
+
+That is all. No clone, Python setup, path editing, or config-file editing is needed.
+The wizard supports Claude Code, Claude Desktop, Codex CLI, Gemini CLI, Cursor,
+and VS Code's Default profile. Existing settings are preserved; changed files
+are backed up. Replacing an existing `loom` entry requires confirmation.
+
+**Finding the cookie:** sign in to [loom.com](https://www.loom.com), open your
+browser's DevTools, select **Application > Cookies > https://www.loom.com**, and
+copy the **value** of `connect.sid`. The installer never reads browser storage.
+Your cookie is stored only in macOS Keychain, never in a client config or repository.
+
+The installer works on Apple Silicon and Intel Macs. Missing prerequisites are
+installed through [Homebrew](https://brew.sh), with your consent. Homebrew may
+request your Mac password or Command Line Tools installation. Downloads need an
+internet connection. Client apps themselves must already be installed.
+
+<details>
+<summary>Inspect the installer first, or install manually</summary>
+
+Download and read the script before running it:
+
+```sh
+curl -fsSLo install-loom.sh https://raw.githubusercontent.com/sonmai/mcp-loom/main/install.sh
+less install-loom.sh
+bash install-loom.sh
+```
+
+Already have uv and ffmpeg? Install the package and open setup directly:
 
 ```sh
 uv tool install git+https://github.com/sonmai/mcp-loom.git
+"$(uv tool dir --bin)/loom-mcp" setup
 ```
 
-uv manages the Python environment and installs the `loom-mcp` executable.
-[Official uv tool installation guide](https://docs.astral.sh/uv/guides/tools/).
+[Official uv installation guide](https://docs.astral.sh/uv/guides/tools/).
+To install without changing Keychain or client settings, use
+`bash install-loom.sh --no-setup`. A reviewed local checkout can be installed with
+`bash install.sh --source /absolute/path/to/mcp-loom`.
 
-**2. Save your Loom cookie once.** In your signed-in browser, open
-**DevTools > Application > Cookies > connect.sid** and copy its value. Run:
+</details>
+
+## Refresh your cookie or connect another client
+
+Run the setup command printed by the installer. If uv is on your shell's PATH,
+you can also use:
+
+```sh
+"$(uv tool dir --bin)/loom-mcp" setup
+```
+
+Choose **0** to refresh only the cookie. Otherwise choose the clients to configure.
+You can keep an existing cookie. Expired cookies can also be replaced directly:
 
 ```sh
 security add-generic-password -U -s loom-mcp -a connect.sid -w
 ```
 
-Paste the value at the password prompt, not into the command or a config file.
-Use the same command whenever the cookie expires. No server restart is needed.
+Paste the value at the hidden password prompt, never after the command. No server
+restart is needed for a refreshed cookie. Never paste the cookie into an AI chat.
 
-**3. Connect your client** using one of the commands or configurations below,
-then start a new client session.
+## Troubleshooting
 
-## Connect a client
+- **No tools after setup:** fully restart the client. Confirm its local MCP server
+  named `loom` is enabled. The wizard reports failures separately for each client.
+- **A CLI cannot be found:** install that client's command-line launcher and rerun
+  setup, or use the manual configurations below. VS Code's bundled launcher is
+  also detected under `/Applications` and `~/Applications`.
+- **A configuration contains comments or cannot be parsed:** the wizard leaves it
+  untouched. Merge the manual snippet below using the client's configuration UI.
+  Symlinked configuration files are also left for manual configuration.
+- **Different VS Code profile:** use that profile's **MCP: Open User Configuration**
+  and the manual snippet. The wizard targets only the Default profile.
+- **Frames need ffmpeg:** rerun the installer, or run `brew install ffmpeg`.
+  Both Homebrew locations and executables on PATH are supported.
+- **Cookie missing or access denied:** rerun setup and choose cookie-only mode.
+  Allow the local process to access the Keychain item if macOS asks.
+
+## Manual client configuration
+
+<details>
+<summary>Configuration snippets for all six clients</summary>
 
 For command-line clients, these commands automatically find the installed executable.
 For JSON configurations, replace `/absolute/path/to/loom-mcp` with the path printed by:
@@ -121,9 +189,12 @@ Existing installations using `uv run --directory ... loom-mcp` continue to work;
 there is no need to change them. Only Claude Code and Codex CLI have been
 runtime-tested, using that local-checkout launch command.
 
+</details>
+
 ## Update
 
-Reinstall from the current GitHub revision:
+Rerun the one-command installer to update and check your setup, or update only
+the package:
 
 ```sh
 uv tool install --reinstall git+https://github.com/sonmai/mcp-loom.git
@@ -176,12 +247,12 @@ npx @modelcontextprotocol/inspector "$(uv tool dir --bin)/loom-mcp"
 
 Connect using stdio and confirm `tools/list` contains exactly `get_video`,
 `get_transcript`, and `get_frames`, with read-only annotations. Call each with
-`video` set to `https://www.loom.com/share/2d424ca8b7b04839ae7e57086030efb0`:
+`video` set to a share URL you can access:
 
-1. `get_video`: name is `Creative-Campaign Association Portal Sync Issue`.
-2. `get_transcript`: first text starts near `Hey, so, this is kind of hard to explain`.
-3. `get_frames`: use `["0:39", "1:14", "1:39"]`; inspect three readable images
-   and confirm all three returned absolute PNG paths exist.
+1. `get_video`: confirm the name and duration match the video.
+2. `get_transcript`: compare the first segment with the video's opening words.
+3. `get_frames`: choose timestamps before the end of the video; inspect each
+   returned image and confirm its absolute PNG path exists.
 
 For development, run the focused standard-library tests from a local checkout:
 

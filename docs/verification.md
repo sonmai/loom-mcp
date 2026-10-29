@@ -74,3 +74,40 @@ standalone `loom-mcp` executable. Inspector CLI connected directly to that
 executable and discovered exactly the same three read-only tools. Existing
 client registrations were unchanged. This check verifies installation and tool
 discovery; the live-video checks above used the local-checkout installation.
+
+## Guided public installer
+
+The approved guided installer was implemented on `feat/guided-installation`.
+Validation used a fresh tool environment under `/private/tmp/loom-public-install`
+and `bash install.sh --source <checkout> --no-setup`; no client configuration or
+Keychain item was changed during installation testing.
+
+- Shell syntax and `--help` passed. Installation built the new CLI entry point.
+- The installed `loom-mcp setup` displayed all six clients in a real terminal;
+  pressing Enter cancelled successfully without changes.
+- 16 tests passed, including preserved settings/backups, repeat setup, declined
+  replacement, malformed configuration, failed CLI registration, restoration of
+  a failed replacement, native hidden cookie entry, cancellation, CLI boundaries,
+  and Intel/PATH executable discovery.
+- Inspector connected to the installer-built executable with no arguments and
+  discovered exactly the three read-only tools. Metadata and transcript matched
+  the earlier acceptance checks. Frames at 39, 74, and 99 seconds each returned
+  a 1280×720 PNG image block and an existing, byte-identical absolute file path.
+- The original user-scoped client registrations remain unchanged.
+
+A clean Mac's Homebrew/prerequisite installation and real Intel hardware were
+not exercised. The four additional clients' actual registration commands were
+not run; their formats are sourced in the README. Public download URLs require
+the installer commit to be pushed to `main` and the repository to be public.
+
+Packaging inspection found that the original wheel omitted the standalone MIT
+notice. `project.license-files` now explicitly includes it. Its exact bytes were
+verified in both the built wheel and the isolated installed package.
+
+The local uv 0.9.26 failed to extract the generated source archive during a full
+`uv build`, although Python tarfile and macOS tar read it successfully. Running
+the same archive through isolated uv 0.13.6 succeeded, as did a complete
+source-distribution-plus-wheel build with that version. The installer itself
+was retested successfully with the existing uv 0.9.26; it builds directly from
+the checkout. Use current uv for building release distributions. No system uv
+upgrade was performed.
