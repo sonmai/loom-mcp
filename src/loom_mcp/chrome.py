@@ -9,6 +9,8 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from loom_mcp.keychain import is_valid_session_cookie
+
 
 class ChromeError(Exception):
     pass
@@ -64,7 +66,12 @@ class ChromeConnection:
     def send(self, payload: bytes, opcode: int = 1) -> None:
         mask = os.urandom(4)
         length = len(payload)
-        prefix = bytes([128 | opcode, 128 | length]) if length < 126 else bytes([128 | opcode, 254]) + struct.pack('!H', length)
+        if length < 126:
+            prefix = bytes([128 | opcode, 128 | length])
+        elif length < 65536:
+            prefix = bytes([128 | opcode, 254]) + struct.pack('!H', length)
+        else:
+            prefix = bytes([128 | opcode, 255]) + struct.pack('!Q', length)
         self.connection.sendall(prefix + mask + bytes(value ^ mask[index % 4] for index, value in enumerate(payload)))
 
     def receive(self) -> dict:
@@ -146,7 +153,7 @@ def read_chrome_cookie() -> str:
                 if len(values) != 1:
                     raise ChromeError('No unique Loom session was found. Sign in to Loom in Chrome and retry.')
                 value = values.pop()
-                if not value or value.startswith('connect.sid=') or any(ord(character) < 33 or ord(character) > 126 or character == ';' for character in value):
+                if not is_valid_session_cookie(value):
                     raise ChromeError('Chrome returned an invalid Loom session cookie.')
                 return value
             finally:

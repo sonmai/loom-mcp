@@ -30,18 +30,21 @@ def parse_timestamps(values: list[str | float], duration: float) -> list[float]:
     for value in values:
         if isinstance(value, bool):
             raise ValueError("Timestamps must be seconds or M:SS strings, not booleans.")
-        if isinstance(value, str):
-            match = re.fullmatch(r"([0-9]+):([0-5][0-9](?:\.[0-9]+)?)", value)
-            if match:
-                seconds = int(match.group(1)) * 60 + float(match.group(2))
-            elif re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", value):
+        try:
+            if isinstance(value, str):
+                match = re.fullmatch(r"([0-9]+):([0-5][0-9](?:\.[0-9]+)?)", value)
+                if match:
+                    seconds = int(match.group(1)) * 60 + float(match.group(2))
+                elif re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", value):
+                    seconds = float(value)
+                else:
+                    raise ValueError("Use non-negative seconds or M:SS, for example 39 or '1:14'.")
+            elif isinstance(value, (int, float)):
                 seconds = float(value)
             else:
-                raise ValueError("Use non-negative seconds or M:SS, for example 39 or '1:14'.")
-        elif isinstance(value, (int, float)):
-            seconds = float(value)
-        else:
-            raise ValueError("Timestamps must be seconds or M:SS strings.")
+                raise ValueError("Timestamps must be seconds or M:SS strings.")
+        except OverflowError:
+            raise ValueError("Timestamps must be finite and non-negative.") from None
         if not math.isfinite(seconds) or seconds < 0:
             raise ValueError("Timestamps must be finite and non-negative.")
         if seconds >= duration:

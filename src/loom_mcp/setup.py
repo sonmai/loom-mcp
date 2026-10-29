@@ -17,6 +17,12 @@ class SetupError(Exception):
     pass
 
 
+class UnparsableConfiguration(SetupError):
+    def __init__(self, message: str, original: bytes):
+        super().__init__(message)
+        self.original = original
+
+
 @dataclass(frozen=True)
 class Client:
     name: str
@@ -52,9 +58,10 @@ def read_configuration(path: Path) -> tuple[bytes | None, dict]:
             raise ValueError
         return original, document
     except (ValueError, UnicodeError):
-        raise SetupError(
+        raise UnparsableConfiguration(
             f"Cannot parse {path}; it was left untouched. Use the manual instructions "
-            "for comments, JSONC, or malformed configuration."
+            "for comments, JSONC, or malformed configuration.",
+            original,
         ) from None
 
 
@@ -80,6 +87,26 @@ def replace_configuration(path: Path, content: bytes, previous: bytes | None) ->
         temporary.replace(path)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def write_configuration(path: Path, document: dict, previous: bytes | None) -> None:
+    content = (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    replace_configuration(path, content, previous)
+
+
+def restore_server_entry(client: Client, path: Path, entry, backup: Path | None) -> None:
+    try:
+        current, document = read_configuration(path)
+        servers = document.setdefault(client.key, {})
+        if not isinstance(servers, dict):
+            raise SetupError
+        servers["loom"] = entry
+        write_configuration(path, document, current)
+    except (SetupError, OSError):
+        raise SetupError(
+            f"{client.name} registration failed, and the previous loom entry could not be restored. "
+            f"Restore it from the backup: {backup}"
+        ) from None
 
 
 def registration_command(client: Client, command: str, executable: Path) -> list[str]:
@@ -109,7 +136,17 @@ def register_client(client: Client, executable: Path, home: Path, approve=confir
                 f"{client.name} uses {variable} to select a custom configuration directory. "
                 "Use the manual client instructions for that directory; no settings were changed."
             )
-    original, document = read_configuration(path)
+    try:
+        original, document = read_configuration(path)
+    except UnparsableConfiguration as error:
+        if not client.command:
+            raise
+        if not approve(
+            f"{path} cannot be parsed, so an existing loom entry cannot be checked. "
+            f"Register through the {client.name} CLI anyway?"
+        ):
+            return "Skipped; configuration left untouched"
+        original, document = error.original, {}
     servers = document.get(client.key, {})
     if not isinstance(servers, dict):
         raise SetupError(f"Invalid server settings in {path}; nothing was changed.")
@@ -139,7 +176,7 @@ def register_client(client: Client, executable: Path, home: Path, approve=confir
     path.parent.mkdir(parents=True, exist_ok=True)
     backup = backup_configuration(path, original)
     if command:
-        after_removal = None
+        removed_existing = False
         if client.command == "claude" and "loom" in servers:
             result = subprocess.run(
                 [command, "mcp", "remove", "loom", "--scope", "user"],
@@ -147,7 +184,7 @@ def register_client(client: Client, executable: Path, home: Path, approve=confir
             )
             if result.returncode:
                 raise SetupError(f"{client.name} could not replace its entry. Backup: {backup}")
-            after_removal = path.read_bytes()
+            removed_existing = True
         try:
             result = subprocess.run(
                 registration_command(client, command, executable),
@@ -156,14 +193,13 @@ def register_client(client: Client, executable: Path, home: Path, approve=confir
             if result.returncode:
                 raise SetupError(f"{client.name} registration failed. Check the client CLI. Backup: {backup or 'not needed'}")
         except (SetupError, OSError, subprocess.TimeoutExpired, KeyboardInterrupt):
-            if after_removal is not None and original is not None:
-                replace_configuration(path, original, after_removal)
+            if removed_existing:
+                restore_server_entry(client, path, existing, backup)
             raise
     else:
         servers["loom"] = expected
         document[client.key] = servers
-        content = (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
-        replace_configuration(path, content, original)
+        write_configuration(path, document, original)
     return f"Configured (backup: {backup})" if backup else "Configured"
 
 

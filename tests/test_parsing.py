@@ -37,7 +37,7 @@ class ParsingTests(unittest.TestCase):
         for values in (
             [], [0] * 11, [-1], [True], [float("nan")], [float("inf")],
             ["1:60"], ["-0:01"], ["1:2"], ["1:02:03"], ["NaN"],
-            ["1:39"], [100],
+            ["1:39"], [100], [10**400], ["9" * 400 + ":00"],
         ):
             with self.subTest(values=values), self.assertRaises(ValueError):
                 parse_timestamps(values, 99)

@@ -51,9 +51,10 @@ keep one context open instead of guessing an account.
 managed browsers that disable debugging, and custom user-data directories can use
 this route. Failed Chrome imports offer manual entry without replacing Keychain.
 
-The imported cookie is written directly through macOS Keychain APIs; it never
-appears in command arguments, environment variables, logs, or temporary files.
-The MCP server continues reading only the Keychain item at runtime.
+The imported cookie is passed on standard input to macOS's `security` tool, the
+same tool the server reads it with, so the server can read it without an access
+prompt. It never appears in command arguments, environment variables, logs, or
+temporary files. The MCP server continues reading only the Keychain item at runtime.
 
 The installer works on Apple Silicon and Intel Macs. Missing prerequisites are
 installed through [Homebrew](https://brew.sh), with your consent. Homebrew may
@@ -115,8 +116,10 @@ restart is needed for a refreshed cookie. Never paste the cookie into an AI chat
   setup, or use the manual configurations below. VS Code's bundled launcher is
   also detected under `/Applications` and `~/Applications`.
 - **A configuration contains comments or cannot be parsed:** the wizard leaves it
-  untouched. Merge the manual snippet below using the client's configuration UI.
-  Symlinked configuration files are also left for manual configuration.
+  untouched. Claude Code, Codex CLI, Gemini CLI, and VS Code can still be registered
+  through their own CLI after you confirm. For Claude Desktop and Cursor, merge the
+  manual snippet below. Symlinked configuration files are also left for manual
+  configuration.
 - **Different VS Code profile:** use that profile's **MCP: Open User Configuration**
   and the manual snippet. The wizard targets only the Default profile.
 - **Custom CLI config directory:** if `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, or
@@ -129,6 +132,10 @@ restart is needed for a refreshed cookie. Never paste the cookie into an AI chat
   does not enable debugging itself. Manual entry remains available.
 - **Cookie missing or access denied:** rerun setup and choose cookie-only mode.
   Allow the local process to access the Keychain item if macOS asks.
+- **Keychain prompts on every tool call after a Chrome import in v0.1.1 or earlier:**
+  those versions created the item in a way `security` cannot read silently. Delete
+  it with `security delete-generic-password -s loom-mcp -a connect.sid`, then rerun
+  setup and import again.
 
 ## Manual client configuration
 
@@ -252,8 +259,10 @@ Separate processes share a per-video file lock; downloads are installed atomical
 Frame calls re-check video metadata and duration, even when the MP4 is cached.
 
 The cache is not automatically refreshed when a video is edited. Delete the
-affected MP4 manually to force a fresh download. Cache files remain locally
-until removed, including after a cookie expires. There is no cache-management tool.
+affected MP4 manually to force a fresh download. If ffmpeg cannot read a cached MP4,
+it is downloaded again once. The cache directory is private to your account. A video's
+MP4 and frames are deleted after 30 days without a frame request, even if its cookie
+has expired. There is no other cache-management tool.
 
 ## Development and verification
 

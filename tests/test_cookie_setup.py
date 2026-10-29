@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from loom_mcp.chrome import ChromeError
+from loom_mcp.keychain import KeychainError, store_cookie
 from loom_mcp.setup import setup_cookie
 
 
@@ -39,3 +40,16 @@ class CookieSetupTests(unittest.TestCase):
             self.assertFalse(setup_cookie())
         read.assert_not_called()
         store.assert_not_called()
+
+    def test_imported_cookie_reaches_security_only_on_stdin(self):
+        with patch('loom_mcp.keychain.subprocess.run', return_value=subprocess.CompletedProcess([], 0)) as run:
+            store_cookie('s%3Aprivate.session')
+        arguments, options = run.call_args
+        self.assertEqual(arguments[0], ['/usr/bin/security', '-i'])
+        self.assertIn('-w "s%3Aprivate.session"', options['input'])
+        self.assertNotIn('env', options)
+        with patch('loom_mcp.keychain.subprocess.run') as run:
+            for value in ('a"b', "a'b", 'a\\b', 'connect.sid=abc', 'a;b'):
+                with self.subTest(value=value), self.assertRaises(KeychainError):
+                    store_cookie(value)
+        run.assert_not_called()

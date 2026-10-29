@@ -110,21 +110,34 @@ class RegistrationTests(unittest.TestCase):
         run.assert_not_called()
         self.assertEqual(config.read_text(), original)
 
-    def test_failed_claude_replacement_restores_existing_registration(self):
+    def test_failed_claude_replacement_restores_entry_and_keeps_concurrent_changes(self):
         client = next(client for client in CLIENTS if client.name == "Claude Code")
         config = self.home / client.config
-        original = '{"other": 1, "mcpServers": {"loom": {"command": "old"}}}'
-        config.write_text(original)
+        config.write_text('{"other": 1, "mcpServers": {"loom": {"command": "old"}}}')
         def run(arguments, **options):
             if "remove" in arguments:
                 config.write_text('{"other": 1, "mcpServers": {}}')
                 return subprocess.CompletedProcess(arguments, 0)
+            config.write_text('{"other": 2, "mcpServers": {}}')
             return subprocess.CompletedProcess(arguments, 1)
         with patch("loom_mcp.setup.find_executable", return_value="/bin/fake"), patch(
             "loom_mcp.setup.subprocess.run", side_effect=run
         ):
-            with self.assertRaises(SetupError):
+            with self.assertRaisesRegex(SetupError, "registration failed"):
                 register_client(client, self.executable, self.home, lambda _: True)
+        self.assertEqual(json.loads(config.read_text()), {"other": 2, "mcpServers": {"loom": {"command": "old"}}})
+
+    def test_unparsable_config_still_registers_through_client_cli_after_approval(self):
+        client = next(client for client in CLIENTS if client.name == "VS Code")
+        config = self.home / client.config
+        config.parent.mkdir(parents=True)
+        original = '{ // JSONC comment\n  "servers": {}\n}\n'
+        config.write_text(original)
+        with patch("loom_mcp.setup.find_executable", return_value="/bin/fake"), patch(
+            "loom_mcp.setup.subprocess.run", return_value=subprocess.CompletedProcess([], 0)
+        ) as run:
+            self.assertTrue(register_client(client, self.executable, self.home, lambda _: True).startswith("Configured"))
+        self.assertIn("--add-mcp", run.call_args.args[0])
         self.assertEqual(config.read_text(), original)
 
     def test_custom_cli_config_roots_are_rejected_before_registration(self):

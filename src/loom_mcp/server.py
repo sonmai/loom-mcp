@@ -12,7 +12,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field, StrictFloat, StrictInt, StrictStr
 
-from loom_mcp.client import LoomError, get_video_metadata, get_video_transcript
+from loom_mcp.client import LoomError, LoomSession, get_video_metadata, get_video_transcript
 from loom_mcp.frames import extract_frames
 from loom_mcp.parsing import parse_timestamps, parse_video_id
 
@@ -77,7 +77,9 @@ def get_video(video: VideoReference) -> str:
     Accepts an HTTPS share URL or video ID. Returns JSON text; unavailable optional
     metadata is null. Does not modify the video.
     """
-    return json.dumps(get_video_metadata(validated_video_id(video)), ensure_ascii=False)
+    video_id = validated_video_id(video)
+    with LoomSession() as loom:
+        return json.dumps(get_video_metadata(loom, video_id), ensure_ascii=False)
 
 
 @server.tool(annotations=READ_ONLY, structured_output=False)
@@ -89,7 +91,9 @@ def get_transcript(video: VideoReference) -> str:
     text, and speaker (null when unavailable). Reports an error if no transcript is
     available. Does not generate or modify transcripts.
     """
-    return json.dumps(get_video_transcript(validated_video_id(video)), ensure_ascii=False)
+    video_id = validated_video_id(video)
+    with LoomSession() as loom:
+        return json.dumps(get_video_transcript(loom, video_id), ensure_ascii=False)
 
 
 @server.tool(annotations=READ_ONLY, structured_output=False)
@@ -103,13 +107,15 @@ def get_frames(video: VideoReference, timestamps: Timestamps) -> list[str | Imag
     reuses a local MP4 cache. Requires an available MP4 export. Does not modify Loom.
     """
     video_id = validated_video_id(video)
-    metadata = get_video_metadata(video_id)
-    try:
-        seconds = parse_timestamps(timestamps, metadata["duration_seconds"])
-    except ValueError as error:
-        raise LoomError(str(error)) from None
+    with LoomSession() as loom:
+        metadata = get_video_metadata(loom, video_id)
+        try:
+            seconds = parse_timestamps(timestamps, metadata["duration_seconds"])
+        except ValueError as error:
+            raise LoomError(str(error)) from None
+        frames = extract_frames(loom, video_id, seconds)
     content = []
-    for timestamp, path, image in extract_frames(video_id, seconds):
+    for timestamp, path, image in frames:
         content.extend([
             json.dumps({"timestamp_seconds": timestamp, "path": str(path)}),
             Image(data=image, format="png"),

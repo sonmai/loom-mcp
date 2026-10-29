@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from loom_mcp import queries
+from loom_mcp.keychain import is_valid_session_cookie
 
 REFRESH_COOKIE = (
     "Refresh the Loom session: in your signed-in browser open DevTools > Application > "
@@ -33,10 +34,10 @@ def read_cookie() -> str:
     cookie = result.stdout.strip()
     if result.returncode or not cookie:
         raise LoomError("Loom cookie is missing or Keychain access was denied. " + REFRESH_COOKIE)
-    if any(ord(character) < 33 or ord(character) > 126 or character == ";" for character in cookie):
-        raise LoomError("The Keychain item must contain only the connect.sid value. " + REFRESH_COOKIE)
     if cookie.startswith("connect.sid="):
         raise LoomError("Store only the cookie value, without 'connect.sid='. " + REFRESH_COOKIE)
+    if not is_valid_session_cookie(cookie):
+        raise LoomError("The Keychain item must contain only the connect.sid value. " + REFRESH_COOKIE)
     return cookie
 
 
@@ -47,33 +48,44 @@ def check_status(response: httpx.Response, source: str) -> None:
         raise LoomError(f"{source} returned HTTP {response.status_code}.")
 
 
-def graphql(operation: str, query: str, variables: dict) -> dict:
-    cookie = read_cookie()
-    with httpx.Client(timeout=30, trust_env=False, follow_redirects=False) as client:
-        response = client.post(
+class LoomSession:
+    """One Keychain read and one GraphQL connection, shared by the requests of a tool call."""
+
+    def __init__(self):
+        self.cookie = read_cookie()
+        self.http = httpx.Client(timeout=30, trust_env=False, follow_redirects=False)
+
+    def __enter__(self) -> "LoomSession":
+        return self
+
+    def __exit__(self, *exception) -> None:
+        self.http.close()
+
+    def graphql(self, operation: str, query: str, variables: dict) -> dict:
+        response = self.http.post(
             "https://www.loom.com/graphql",
             headers={
                 "content-type": "application/json",
                 "apollographql-client-name": "web",
                 "x-loom-request-source": "loom_web",
-                "cookie": f"connect.sid={cookie}",
+                "cookie": f"connect.sid={self.cookie}",
             },
             json={"operationName": operation, "query": query, "variables": variables},
         )
-    check_status(response, "Loom GraphQL")
-    body = response.json()
-    if body.get("errors"):
-        raise LoomError(
-            "Loom rejected the read query. Access may be denied, the session may have expired, "
-            "or the internal API may have changed. " + REFRESH_COOKIE
-        )
-    if not isinstance(body.get("data"), dict):
-        raise LoomError("Loom returned an unexpected GraphQL response; its internal API may have changed.")
-    return body["data"]
+        check_status(response, "Loom GraphQL")
+        body = response.json()
+        if body.get("errors"):
+            raise LoomError(
+                "Loom rejected the read query. Access may be denied, the session may have expired, "
+                "or the internal API may have changed. " + REFRESH_COOKIE
+            )
+        if not isinstance(body.get("data"), dict):
+            raise LoomError("Loom returned an unexpected GraphQL response; its internal API may have changed.")
+        return body["data"]
 
 
-def get_video_metadata(video_id: str) -> dict:
-    data = graphql("fetchVideoData", queries.VIDEO, {"id": video_id, "password": None})
+def get_video_metadata(loom: LoomSession, video_id: str) -> dict:
+    data = loom.graphql("fetchVideoData", queries.VIDEO, {"id": video_id, "password": None})
     video = data.get("video") or {}
     if video.get("__typename") != "RegularUserVideo":
         raise LoomError(
@@ -100,8 +112,8 @@ def validate_download_url(value: str) -> str:
     return value
 
 
-def get_video_transcript(video_id: str) -> dict:
-    data = graphql("fetchVideoTranscript", queries.TRANSCRIPT, {"videoId": video_id})
+def get_video_transcript(loom: LoomSession, video_id: str) -> dict:
+    data = loom.graphql("fetchVideoTranscript", queries.TRANSCRIPT, {"videoId": video_id})
     details = data.get("fetchVideoTranscript") or {}
     if details.get("__typename") != "VideoTranscriptDetails":
         raise LoomError("Transcript is unavailable or access was denied. " + REFRESH_COOKIE)
@@ -121,8 +133,8 @@ def get_video_transcript(video_id: str) -> dict:
     }
 
 
-def get_mp4_url(video_id: str) -> str:
-    data = graphql(
+def get_mp4_url(loom: LoomSession, video_id: str) -> str:
+    data = loom.graphql(
         "GetVideoTranscodedUrl", queries.DOWNLOAD,
         {"videoId": video_id, "forceOriginal": False},
     )

@@ -1,60 +1,33 @@
-import ctypes
+import subprocess
 
 
 class KeychainError(Exception):
     pass
 
 
+def is_valid_session_cookie(value: str) -> bool:
+    return bool(value) and not value.startswith('connect.sid=') and not any(
+        ord(character) < 33 or ord(character) > 126 or character == ';' for character in value
+    )
+
+
 def store_cookie(cookie: str) -> None:
-    if not cookie or cookie.startswith('connect.sid=') or any(
-        ord(character) < 33 or ord(character) > 126 or character == ';' for character in cookie
-    ):
+    """Save the cookie through /usr/bin/security, the program the server reads it with.
+
+    Deliberately not Security.framework from Python: an item created that way lands in a
+    Keychain partition that /usr/bin/security cannot read without an access prompt.
+    The value is sent on stdin to `security -i`, never as a process argument.
+    """
+    # `security -i` splits its input like a shell, so quoting characters could alter the command.
+    if not is_valid_session_cookie(cookie) or any(character in cookie for character in '"\'\\'):
         raise KeychainError('Cannot save an invalid Loom session cookie.')
-    security = ctypes.CDLL('/System/Library/Frameworks/Security.framework/Security')
-    foundation = ctypes.CDLL('/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation')
-    pointer = ctypes.c_void_p
-    foundation.CFStringCreateWithCString.argtypes = [pointer, ctypes.c_char_p, ctypes.c_uint32]
-    foundation.CFStringCreateWithCString.restype = pointer
-    foundation.CFDataCreate.argtypes = [pointer, ctypes.c_char_p, ctypes.c_long]
-    foundation.CFDataCreate.restype = pointer
-    foundation.CFDictionaryCreateMutable.argtypes = [pointer, ctypes.c_long, pointer, pointer]
-    foundation.CFDictionaryCreateMutable.restype = pointer
-    foundation.CFDictionarySetValue.argtypes = [pointer, pointer, pointer]
-    foundation.CFDictionarySetValue.restype = None
-    foundation.CFRelease.argtypes = [pointer]
-    foundation.CFRelease.restype = None
-    security.SecItemUpdate.argtypes = [pointer, pointer]
-    security.SecItemUpdate.restype = ctypes.c_int32
-    security.SecItemAdd.argtypes = [pointer, pointer]
-    security.SecItemAdd.restype = ctypes.c_int32
-    owned = []
-
-    def retain(value):
-        if not value:
-            raise KeychainError('Keychain could not allocate credential storage.')
-        owned.append(value)
-        return value
-
-    def constant(name):
-        return pointer.in_dll(security, name).value
-
     try:
-        service = retain(foundation.CFStringCreateWithCString(None, b'loom-mcp', 0x08000100))
-        account = retain(foundation.CFStringCreateWithCString(None, b'connect.sid', 0x08000100))
-        encoded = cookie.encode('ascii')
-        data = retain(foundation.CFDataCreate(None, encoded, len(encoded)))
-        query = retain(foundation.CFDictionaryCreateMutable(None, 0, None, None))
-        changes = retain(foundation.CFDictionaryCreateMutable(None, 0, None, None))
-        foundation.CFDictionarySetValue(query, constant('kSecClass'), constant('kSecClassGenericPassword'))
-        foundation.CFDictionarySetValue(query, constant('kSecAttrService'), service)
-        foundation.CFDictionarySetValue(query, constant('kSecAttrAccount'), account)
-        foundation.CFDictionarySetValue(changes, constant('kSecValueData'), data)
-        status = security.SecItemUpdate(query, changes)
-        if status == -25300:
-            foundation.CFDictionarySetValue(query, constant('kSecValueData'), data)
-            status = security.SecItemAdd(query, None)
-        if status:
-            raise KeychainError('Keychain did not save the cookie. Allow access if prompted, or use manual entry.')
-    finally:
-        for value in reversed(owned):
-            foundation.CFRelease(value)
+        result = subprocess.run(
+            ['/usr/bin/security', '-i'],
+            input=f'add-generic-password -U -s loom-mcp -a connect.sid -w "{cookie}"\n',
+            capture_output=True, text=True, timeout=30, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        result = None
+    if result is None or result.returncode:
+        raise KeychainError('Keychain did not save the cookie. Allow access if prompted, or use manual entry.')

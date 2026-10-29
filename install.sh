@@ -124,7 +124,7 @@ fi
 printf '\nInstalled: %s\n' "$executable"
 printf 'To rerun setup later: %q setup\n' "$executable"
 if [ "$run_setup" = true ]; then
-    if [ ! -r /dev/tty ]; then
+    if ! { : </dev/tty; } 2>/dev/null; then
         printf 'Run this command in an interactive Terminal: %q setup\n' "$executable" >&2
         exit 1
     fi
