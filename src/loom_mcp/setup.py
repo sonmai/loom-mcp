@@ -94,6 +94,19 @@ def registration_command(client: Client, command: str, executable: Path) -> list
 
 def register_client(client: Client, executable: Path, home: Path, approve=confirm) -> str:
     path = home / client.config
+    overrides = {
+        "claude": ("CLAUDE_CONFIG_DIR", ".claude.json"),
+        "codex": ("CODEX_HOME", "config.toml"),
+        "gemini": ("GEMINI_CLI_HOME", ".gemini/settings.json"),
+    }
+    if client.command in overrides:
+        variable, relative_path = overrides[client.command]
+        custom_directory = os.getenv(variable)
+        if custom_directory is not None and (Path(custom_directory).expanduser() / relative_path).absolute() != path.absolute():
+            raise SetupError(
+                f"{client.name} uses {variable} to select a custom configuration directory. "
+                "Use the manual client instructions for that directory; no settings were changed."
+            )
     original, document = read_configuration(path)
     servers = document.get(client.key, {})
     if not isinstance(servers, dict):

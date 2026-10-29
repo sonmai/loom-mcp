@@ -94,6 +94,9 @@ restart is needed for a refreshed cookie. Never paste the cookie into an AI chat
   Symlinked configuration files are also left for manual configuration.
 - **Different VS Code profile:** use that profile's **MCP: Open User Configuration**
   and the manual snippet. The wizard targets only the Default profile.
+- **Custom CLI config directory:** if `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, or
+  `GEMINI_CLI_HOME` selects a non-default location, the wizard leaves that client
+  untouched. Use its manual registration command in your usual shell instead.
 - **Frames need ffmpeg:** rerun the installer, or run `brew install ffmpeg`.
   Both Homebrew locations and executables on PATH are supported.
 - **Cookie missing or access denied:** rerun setup and choose cookie-only mode.

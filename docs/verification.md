@@ -85,10 +85,15 @@ Keychain item was changed during installation testing.
 - Shell syntax and `--help` passed. Installation built the new CLI entry point.
 - The installed `loom-mcp setup` displayed all six clients in a real terminal;
   pressing Enter cancelled successfully without changes.
-- 16 tests passed, including preserved settings/backups, repeat setup, declined
+- 17 tests passed, including preserved settings/backups, repeat setup, declined
   replacement, malformed configuration, failed CLI registration, restoration of
   a failed replacement, native hidden cookie entry, cancellation, CLI boundaries,
   and Intel/PATH executable discovery.
+- Independent review identified custom CLI config roots as a conflict-detection
+  risk. Registration now rejects non-default roots before invoking native commands;
+  the focused regression failed for all three affected clients before the fix and
+  passes afterward. VS Code's Default-profile registration was separately checked
+  by the reviewer using an isolated user-data directory.
 - Inspector connected to the installer-built executable with no arguments and
   discovered exactly the three read-only tools. Metadata and transcript matched
   the earlier acceptance checks. Frames at 39, 74, and 99 seconds each returned

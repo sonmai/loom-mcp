@@ -127,6 +127,21 @@ class RegistrationTests(unittest.TestCase):
                 register_client(client, self.executable, self.home, lambda _: True)
         self.assertEqual(config.read_text(), original)
 
+    def test_custom_cli_config_roots_are_rejected_before_registration(self):
+        overrides = {"claude": "CLAUDE_CONFIG_DIR", "codex": "CODEX_HOME", "gemini": "GEMINI_CLI_HOME"}
+        cases = [(client, str(self.home / "custom")) for client in CLIENTS if client.command in overrides]
+        cases.append((next(client for client in CLIENTS if client.command == "claude"), ""))
+        for client, directory in cases:
+            with self.subTest(client=client.name, directory=directory), patch(
+                "loom_mcp.setup.os.getenv", side_effect=lambda key: directory if key == overrides[client.command] else None
+            ), patch("loom_mcp.setup.find_executable", return_value="/bin/fake"), patch(
+                "loom_mcp.setup.subprocess.run", return_value=subprocess.CompletedProcess([], 0)
+            ) as run:
+                with self.assertRaises(SetupError):
+                    register_client(client, self.executable, self.home, lambda _: True)
+                run.assert_not_called()
+                self.assertFalse((self.home / client.config).exists())
+
 
 if __name__ == "__main__":
     unittest.main()
