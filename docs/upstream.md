@@ -168,4 +168,3 @@ Tests are drafted but not executed; there is no passing-test or TDD claim.
 After approval: install through uv, verify in MCP Inspector first, then perform
 focused tests and install in the two authorized clients. Capture actual results
 for metadata, transcript, images, and local file existence separately.
-
