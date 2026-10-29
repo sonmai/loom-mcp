@@ -64,3 +64,13 @@ normal local access. Actual client tool calls succeeded.
 
 No code changes were required after the approved draft. The other four documented
 clients have not been runtime-tested. No commit has been pushed.
+
+## Standalone installation
+
+The simplified `uv tool install git+https://github.com/sonmai/mcp-loom.git` route
+was tested with isolated `UV_TOOL_DIR` and `UV_TOOL_BIN_DIR` directories under
+`/private/tmp/loom-install-check`. It installed commit `bdd2b81` and exposed a
+standalone `loom-mcp` executable. Inspector CLI connected directly to that
+executable and discovered exactly the same three read-only tools. Existing
+client registrations were unchanged. This check verifies installation and tool
+discovery; the live-video checks above used the local-checkout installation.

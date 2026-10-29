@@ -7,43 +7,130 @@ Verified with MCP Inspector, Claude Code, and Codex CLI: metadata, timestamped
 transcript, and three readable frames with existing file paths. Four parsing
 tests pass. See [verification status](docs/verification.md) for evidence and scope.
 
-## Setup
+## Quick install
 
-Requires Python 3.11+, uv, macOS Keychain, and `/opt/homebrew/bin/ffmpeg`.
-The only runtime dependencies declared by this project are `mcp` and `httpx`;
-their transitive dependencies are installed by uv. `uv_build` is the build backend.
+Requires macOS, [uv](https://docs.astral.sh/uv/getting-started/installation/),
+and ffmpeg at `/opt/homebrew/bin/ffmpeg`.
 
-In your signed-in Loom browser, open **DevTools > Application > Cookies >
-connect.sid**. Copy only the cookie value. In Terminal run:
+**1. Install directly from GitHub.** No clone or repository path needed.
+
+```sh
+uv tool install git+https://github.com/sonmai/mcp-loom.git
+```
+
+uv manages the Python environment and installs the `loom-mcp` executable.
+[Official uv tool installation guide](https://docs.astral.sh/uv/guides/tools/).
+
+**2. Save your Loom cookie once.** In your signed-in browser, open
+**DevTools > Application > Cookies > connect.sid** and copy its value. Run:
 
 ```sh
 security add-generic-password -U -s loom-mcp -a connect.sid -w
 ```
 
-Enter the value at the password prompt. Do not append it to the command, paste it
-into chat, or put it in a configuration file. Refresh an expired cookie using the
-same steps and command. A later tool call reads the updated item automatically.
-If Keychain prompts for access, allow the local process to read this item.
+Paste the value at the password prompt, not into the command or a config file.
+Use the same command whenever the cookie expires. No server restart is needed.
 
-At runtime the server captures the output of this command internally:
+**3. Connect your client** using one of the commands or configurations below,
+then start a new client session.
 
-```sh
-security find-generic-password -s loom-mcp -a connect.sid -w
-```
+## Connect a client
 
-Do not run that read command in a shared terminal or paste its output anywhere.
-The server reads credentials only from Keychain. Authentication errors contain
-refresh instructions; raw HTTP bodies, cookie values, and subprocess diagnostics
-are not included in errors. Logging goes to stderr; stdout carries MCP only.
-
-After approval, launch from any working directory:
+For command-line clients, these commands automatically find the installed executable.
+For JSON configurations, replace `/absolute/path/to/loom-mcp` with the path printed by:
 
 ```sh
-uv run --directory /Users/test/PersonalProjects/mcp-loom loom-mcp
+printf '%s/loom-mcp\n' "$(uv tool dir --bin)"
 ```
 
-The first launch installs the project and its dependencies. All media paths are
-derived from the user's home directory, never the caller's working directory.
+Merge entries into existing configurations rather than replacing other servers.
+Credentials stay in Keychain.
+
+### Claude Code
+
+[Official MCP documentation](https://code.claude.com/docs/en/mcp).
+
+```sh
+claude mcp add --transport stdio --scope user loom -- "$(uv tool dir --bin)/loom-mcp"
+```
+
+### Codex CLI
+
+[Official MCP registration source](https://github.com/openai/codex/blob/main/codex-rs/cli/src/mcp_cmd.rs).
+
+```sh
+codex mcp add loom -- "$(uv tool dir --bin)/loom-mcp"
+```
+
+### Claude Desktop
+
+Merge into `~/Library/Application Support/Claude/claude_desktop_config.json`
+(Settings > Developer > Edit Config).
+[Official local-server guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers).
+
+```json
+{
+  "mcpServers": {
+    "loom": { "command": "/absolute/path/to/loom-mcp" }
+  }
+}
+```
+
+### Gemini CLI
+
+Merge into `~/.gemini/settings.json`.
+[Official MCP documentation](https://geminicli.com/docs/tools/mcp-server/)
+and [configuration locations](https://geminicli.com/docs/reference/configuration/).
+
+```json
+{
+  "mcpServers": {
+    "loom": { "command": "/absolute/path/to/loom-mcp" }
+  }
+}
+```
+
+### Cursor
+
+Merge into `~/.cursor/mcp.json`.
+[Official MCP documentation](https://cursor.com/docs/mcp).
+
+```json
+{
+  "mcpServers": {
+    "loom": { "command": "/absolute/path/to/loom-mcp" }
+  }
+}
+```
+
+### VS Code
+
+Run **MCP: Open User Configuration** and merge into that `mcp.json`.
+[Official configuration reference](https://github.com/microsoft/vscode-docs/blob/main/docs/agents/reference/mcp-configuration.md).
+
+```json
+{
+  "servers": {
+    "loom": { "type": "stdio", "command": "/absolute/path/to/loom-mcp" }
+  }
+}
+```
+
+Formats were checked against the linked documentation on 2026-10-29.
+Existing installations using `uv run --directory ... loom-mcp` continue to work;
+there is no need to change them. Only Claude Code and Codex CLI have been
+runtime-tested, using that local-checkout launch command.
+
+## Update
+
+Reinstall from the current GitHub revision:
+
+```sh
+uv tool install --reinstall git+https://github.com/sonmai/mcp-loom.git
+```
+
+Restart the client to use the updated server. The Keychain cookie and media cache
+are retained.
 
 ## Tools
 
@@ -70,110 +157,21 @@ The cache is not automatically refreshed when a video is edited. Delete the
 affected MP4 manually to force a fresh download. Cache files remain locally
 until removed, including after a cookie expires. There is no cache-management tool.
 
-## Install in a local client
+## Development and verification
 
-These examples use the repository's current absolute path and the locally detected
-uv executable, `/Users/test/.local/bin/uv`. Adjust both paths if the repo or uv moves.
-Merge entries into existing configurations rather than replacing other servers.
-No example stores a cookie or supplies credentials through environment variables.
-
-### Claude Code
-
-Register at user scope. [Official MCP configuration documentation](https://code.claude.com/docs/en/mcp).
+For a local checkout, the original entry point remains available:
 
 ```sh
-claude mcp add --transport stdio --scope user loom -- \
-  /Users/test/.local/bin/uv run --directory /Users/test/PersonalProjects/mcp-loom loom-mcp
+uv run --directory /absolute/path/to/mcp-loom loom-mcp
 ```
 
-### Claude Desktop
+The project uses Python 3.11+, the official MCP SDK, and HTTPX. `uv_build` is the
+build backend. No extra runtime dependency is needed for installation.
 
-Merge into `~/Library/Application Support/Claude/claude_desktop_config.json`,
-available through Settings > Developer > Edit Config.
-[Official local-server guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers).
-
-```json
-{
-  "mcpServers": {
-    "loom": {
-      "command": "/Users/test/.local/bin/uv",
-      "args": ["run", "--directory", "/Users/test/PersonalProjects/mcp-loom", "loom-mcp"]
-    }
-  }
-}
-```
-
-### Codex CLI
-
-Add to `~/.codex/config.toml`.
-[Official configuration source](https://github.com/openai/codex/blob/main/codex-rs/config/src/mcp_types.rs).
-
-```toml
-[mcp_servers.loom]
-command = "/Users/test/.local/bin/uv"
-args = ["run", "--directory", "/Users/test/PersonalProjects/mcp-loom", "loom-mcp"]
-```
-
-### Gemini CLI
-
-Merge into `~/.gemini/settings.json`.
-[Official MCP configuration documentation](https://geminicli.com/docs/tools/mcp-server/)
-and [configuration locations](https://geminicli.com/docs/reference/configuration/).
-
-```json
-{
-  "mcpServers": {
-    "loom": {
-      "command": "/Users/test/.local/bin/uv",
-      "args": ["run", "--directory", "/Users/test/PersonalProjects/mcp-loom", "loom-mcp"]
-    }
-  }
-}
-```
-
-### Cursor
-
-Merge into `~/.cursor/mcp.json`.
-[Official MCP configuration documentation](https://cursor.com/docs/mcp).
-
-```json
-{
-  "mcpServers": {
-    "loom": {
-      "command": "/Users/test/.local/bin/uv",
-      "args": ["run", "--directory", "/Users/test/PersonalProjects/mcp-loom", "loom-mcp"]
-    }
-  }
-}
-```
-
-### VS Code
-
-Use **MCP: Open User Configuration** and merge into that `mcp.json`.
-This is the VS Code format, with `servers` and `type: stdio`.
-[Official configuration reference](https://github.com/microsoft/vscode-docs/blob/main/docs/agents/reference/mcp-configuration.md).
-
-```json
-{
-  "servers": {
-    "loom": {
-      "type": "stdio",
-      "command": "/Users/test/.local/bin/uv",
-      "args": ["run", "--directory", "/Users/test/PersonalProjects/mcp-loom", "loom-mcp"]
-    }
-  }
-}
-```
-
-Formats were checked against the linked documentation on 2026-10-29.
-Configuration documentation is not evidence that a client has been tested.
-
-## Verification after approval
-
-Start with MCP Inspector before installing the server in any client:
+To inspect the standalone installation:
 
 ```sh
-npx @modelcontextprotocol/inspector uv run --directory /Users/test/PersonalProjects/mcp-loom loom-mcp
+npx @modelcontextprotocol/inspector "$(uv tool dir --bin)/loom-mcp"
 ```
 
 Connect using stdio and confirm `tools/list` contains exactly `get_video`,
@@ -185,14 +183,17 @@ Connect using stdio and confirm `tools/list` contains exactly `get_video`,
 3. `get_frames`: use `["0:39", "1:14", "1:39"]`; inspect three readable images
    and confirm all three returned absolute PNG paths exist.
 
-Repeat the same checks in the two selected local clients after Inspector passes.
-The focused standard-library parsing tests can then be run without a test dependency:
+For development, run the focused standard-library tests from a local checkout:
 
 ```sh
-uv run --directory /Users/test/PersonalProjects/mcp-loom python -m unittest discover -s tests
+uv run --directory /absolute/path/to/mcp-loom python -m unittest discover -s tests
 ```
 
 ## Limits and attribution
+
+Authentication reads only the `loom-mcp` / `connect.sid` Keychain item at runtime.
+Errors never include cookie values or raw HTTP/subprocess diagnostics. Logs go to
+stderr; stdout is the MCP channel.
 
 macOS only, because authentication uses Keychain. Stdio only. Remote HTTP clients
 are out of scope: a remotely hosted server would need to hold the browser cookie.
