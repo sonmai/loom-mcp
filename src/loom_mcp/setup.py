@@ -9,7 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from loom_mcp.executables import find_executable
-from loom_mcp.chrome import ChromeError, read_chrome_cookie
+from loom_mcp.chrome import REMOTE_DEBUGGING_PAGE, ChromeDebuggingOff, ChromeError, open_in_chrome, read_chrome_cookie
 from loom_mcp.keychain import KeychainError, store_cookie
 
 
@@ -238,19 +238,33 @@ def setup_cookie() -> bool:
         print("This permission grants broad browser access; setup only reads the Loom session cookie.")
         if not confirm("Connect to Chrome and save the Loom cookie in Keychain?"):
             return False
-        try:
-            cookie = read_chrome_cookie()
+        while True:
             try:
-                store_cookie(cookie)
-            finally:
-                del cookie
-            print("Loom cookie saved in Keychain. The Chrome connection is closed.")
-            print("You can turn remote debugging off again in Chrome.")
-            return True
-        except (ChromeError, KeychainError) as error:
-            print(str(error))
-            if not confirm("Use manual cookie entry instead?"):
-                return False
+                open_in_chrome()
+                cookie = read_chrome_cookie()
+                try:
+                    store_cookie(cookie)
+                finally:
+                    del cookie
+                print("Loom cookie saved in Keychain. The Chrome connection is closed.")
+                print("You can turn remote debugging off again in Chrome.")
+                return True
+            except ChromeDebuggingOff as error:
+                print(str(error))
+                if not confirm("Open Chrome's remote debugging page now?"):
+                    break
+                open_in_chrome(REMOTE_DEBUGGING_PAGE)
+                print(f"If the page did not open, paste {REMOTE_DEBUGGING_PAGE} into Chrome's address bar.")
+                input("Turn on remote debugging there, then press Enter to connect again. ")
+            except ChromeError as error:
+                print(str(error))
+                if not confirm("Try connecting to Chrome again?"):
+                    break
+            except KeychainError as error:
+                print(str(error))
+                break
+        if not confirm("Use manual cookie entry instead?"):
+            return False
     print("\nSign in to loom.com in your browser.")
     print("Open DevTools > Application > Cookies > connect.sid and copy only its value.")
     print("The macOS password prompt below hides your input; paste the value there.")

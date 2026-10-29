@@ -4,7 +4,7 @@ import subprocess
 import unittest
 from unittest.mock import patch
 
-from loom_mcp.chrome import ChromeError
+from loom_mcp.chrome import REMOTE_DEBUGGING_PAGE, ChromeDebuggingOff, ChromeError
 from loom_mcp.keychain import KeychainError, store_cookie
 from loom_mcp.setup import setup_cookie
 
@@ -14,7 +14,7 @@ class CookieSetupTests(unittest.TestCase):
         output = io.StringIO()
         with contextlib.redirect_stdout(output), patch('loom_mcp.setup.subprocess.run', return_value=subprocess.CompletedProcess([], 1)), patch(
             'builtins.input', side_effect=['1', 'y']
-        ), patch('loom_mcp.setup.read_chrome_cookie', return_value='private-session') as read, patch(
+        ), patch('loom_mcp.setup.open_in_chrome'), patch('loom_mcp.setup.read_chrome_cookie', return_value='private-session') as read, patch(
             'loom_mcp.setup.store_cookie'
         ) as store, patch('loom_mcp.setup.save_cookie') as manual:
             self.assertTrue(setup_cookie())
@@ -23,10 +23,21 @@ class CookieSetupTests(unittest.TestCase):
         manual.assert_not_called()
         self.assertNotIn('private-session', output.getvalue())
 
+    def test_debugging_off_opens_chrome_settings_and_retries_the_import(self):
+        with contextlib.redirect_stdout(io.StringIO()), patch('loom_mcp.setup.subprocess.run', return_value=subprocess.CompletedProcess([], 1)), patch(
+            'builtins.input', side_effect=['1', 'y', 'y', '']
+        ), patch('loom_mcp.setup.read_chrome_cookie', side_effect=[ChromeDebuggingOff('off'), 'private-session']), patch(
+            'loom_mcp.setup.open_in_chrome'
+        ) as open_in_chrome, patch('loom_mcp.setup.store_cookie') as store, patch('loom_mcp.setup.save_cookie') as manual:
+            self.assertTrue(setup_cookie())
+        open_in_chrome.assert_any_call(REMOTE_DEBUGGING_PAGE)
+        store.assert_called_once_with('private-session')
+        manual.assert_not_called()
+
     def test_browser_failure_can_fall_back_without_saving_a_browser_cookie(self):
         with contextlib.redirect_stdout(io.StringIO()), patch('loom_mcp.setup.subprocess.run', return_value=subprocess.CompletedProcess([], 1)), patch(
-            'builtins.input', side_effect=['1', 'y', 'y', 'y']
-        ), patch('loom_mcp.setup.read_chrome_cookie', side_effect=ChromeError('No Loom session')), patch(
+            'builtins.input', side_effect=['1', 'y', 'n', 'y', 'y']
+        ), patch('loom_mcp.setup.open_in_chrome'), patch('loom_mcp.setup.read_chrome_cookie', side_effect=ChromeError('No Loom session')), patch(
             'loom_mcp.setup.store_cookie'
         ) as store, patch('loom_mcp.setup.save_cookie') as manual:
             self.assertTrue(setup_cookie())

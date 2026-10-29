@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from loom_mcp.chrome import ChromeError, read_chrome_cookie
+from loom_mcp.chrome import ChromeDebuggingOff, ChromeError, read_chrome_cookie
 
 
 class ChromeTests(unittest.TestCase):
@@ -94,6 +94,18 @@ class ChromeTests(unittest.TestCase):
                 self.assertFalse(worker.is_alive(), 'Importer did not disconnect')
                 self.assertEqual(errors, [])
                 self.assertTrue(requests)
+
+    def test_refused_or_missing_endpoint_reports_debugging_off(self):
+        with tempfile.TemporaryDirectory() as directory:
+            endpoint = Path(directory) / 'DevToolsActivePort'
+            with patch('loom_mcp.chrome.chrome_endpoint', return_value=endpoint), self.assertRaises(ChromeDebuggingOff):
+                read_chrome_cookie()
+            endpoint.write_text('9222\n/devtools/browser/stale-id\n')
+            with patch('loom_mcp.chrome.chrome_endpoint', return_value=endpoint), patch(
+                'socket.create_connection', side_effect=ConnectionRefusedError
+            ), self.assertRaises(ChromeDebuggingOff) as raised:
+                read_chrome_cookie()
+            self.assertNotIn('Allow', str(raised.exception))
 
     def test_invalid_endpoint_is_rejected_before_connecting(self):
         for value in ('443\nhttps://example.com\n', '0\n/devtools/browser/test\n', '123\n/devtools/browser/test\r\nInjected: yes\n'):

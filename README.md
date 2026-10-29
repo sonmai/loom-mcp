@@ -31,10 +31,11 @@ and VS Code's Default profile. Existing settings are preserved; changed files
 are backed up. Replacing an existing `loom` entry requires confirmation.
 
 **Import from Chrome (144+):** keep a signed-in [Loom](https://www.loom.com)
-tab open in your usual Chrome profile. Open `chrome://inspect/#remote-debugging`
-and enable remote debugging. Choose Chrome import in setup, then click **Allow**
-in Chrome's connection dialog within 60 seconds. No separate profile or new login
-is needed if that profile is already signed in. Setup reads the Loom session,
+tab open in your usual Chrome profile. Choose Chrome import in setup. If remote
+debugging is off, setup offers to open `chrome://inspect/#remote-debugging` so you
+can turn it on, then connects again. Setup brings Chrome to the front; click
+**Allow** in its connection dialog within 60 seconds. No separate profile or new
+login is needed if that profile is already signed in. Setup reads the Loom session,
 disconnects, and saves it in Keychain. You can turn remote debugging off afterward.
 
 Chrome grants broad debugging permission. This importer only lists tab metadata,
@@ -127,9 +128,10 @@ restart is needed for a refreshed cookie. Never paste the cookie into an AI chat
   untouched. Use its manual registration command in your usual shell instead.
 - **Frames need ffmpeg:** rerun the installer, or run `brew install ffmpeg`.
   Both Homebrew locations and executables on PATH are supported.
-- **Chrome import cannot connect:** use Chrome 144+, enable remote debugging,
-  keep a signed-in Loom tab open, and approve Chrome's connection dialog. Setup
-  does not enable debugging itself. Manual entry remains available.
+- **Chrome import cannot connect:** use Chrome 144+, keep a signed-in Loom tab
+  open, and approve Chrome's connection dialog. If setup reports remote debugging
+  is off, let it open the settings page, turn debugging on, and press Enter to
+  retry. Setup never turns debugging on itself. Manual entry remains available.
 - **Cookie missing or access denied:** rerun setup and choose cookie-only mode.
   Allow the local process to access the Keychain item if macOS asks.
 - **Keychain prompts on every tool call after a Chrome import in v0.1.1 or earlier:**

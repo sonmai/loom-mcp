@@ -5,6 +5,7 @@ import os
 import re
 import socket
 import struct
+import subprocess
 import time
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -12,8 +13,23 @@ from urllib.parse import urlsplit
 from loom_mcp.keychain import is_valid_session_cookie
 
 
+REMOTE_DEBUGGING_PAGE = 'chrome://inspect/#remote-debugging'
+
+
 class ChromeError(Exception):
     pass
+
+
+class ChromeDebuggingOff(ChromeError):
+    pass
+
+
+def open_in_chrome(*urls: str) -> None:
+    """Bring Chrome to the front, opening any given URLs. Best effort: failures are ignored."""
+    try:
+        subprocess.run(['/usr/bin/open', '-a', 'Google Chrome', *urls], capture_output=True, timeout=30, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
 
 
 def chrome_endpoint() -> Path:
@@ -163,9 +179,14 @@ def read_chrome_cookie() -> str:
                     pass
     except ChromeError:
         raise
-    except FileNotFoundError:
-        raise ChromeError('Open Chrome 144+ and enable chrome://inspect/#remote-debugging, then retry.') from None
-    except (TimeoutError, ConnectionError):
-        raise ChromeError('Chrome connection timed out or was denied. Click Allow in Chrome and retry.') from None
+    except (FileNotFoundError, ConnectionRefusedError):
+        # Chrome leaves DevToolsActivePort behind when remote debugging is turned off, so a stale port refuses.
+        raise ChromeDebuggingOff(
+            f'Chrome remote debugging is off. Turn it on at {REMOTE_DEBUGGING_PAGE} in Chrome 144+.'
+        ) from None
+    except TimeoutError:
+        raise ChromeError('Chrome was not approved within 60 seconds. Click Allow in Chrome\'s dialog and retry.') from None
+    except ConnectionError:
+        raise ChromeError('Chrome denied or closed the connection. Click Allow in Chrome\'s dialog and retry.') from None
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
         raise ChromeError('Cannot read the Chrome session. Check remote debugging or use manual cookie entry.') from None
