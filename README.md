@@ -13,7 +13,7 @@ and scope.
 On your Mac, paste this into Terminal:
 
 ```sh
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/sonmai/loom-mcp/v0.1.1/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/sonmai/loom-mcp/v0.1.2/install.sh)"
 ```
 
 The installer checks prerequisites, asks before installing anything missing,
@@ -67,7 +67,7 @@ internet connection. Client apps themselves must already be installed.
 Download and read the script before running it:
 
 ```sh
-curl -fsSLo install-loom.sh https://raw.githubusercontent.com/sonmai/loom-mcp/v0.1.1/install.sh
+curl -fsSLo install-loom.sh https://raw.githubusercontent.com/sonmai/loom-mcp/v0.1.2/install.sh
 less install-loom.sh
 bash install-loom.sh
 ```
@@ -75,7 +75,7 @@ bash install-loom.sh
 Already have uv and ffmpeg? Install the package and open setup directly:
 
 ```sh
-uv tool install git+https://github.com/sonmai/loom-mcp.git@v0.1.1
+uv tool install git+https://github.com/sonmai/loom-mcp.git@v0.1.2
 "$(uv tool dir --bin)/loom-mcp" setup
 ```
 
@@ -302,7 +302,7 @@ To cut a release, set the same version in `pyproject.toml` and `release` in
 
 ```sh
 uv export --frozen --no-hashes --no-dev --no-emit-project -o constraints.txt
-git tag v0.1.1 && git push origin v0.1.1
+git tag v0.1.2 && git push origin v0.1.2
 ```
 
 `uv tool install` ignores `uv.lock`, so `constraints.txt` is how the installer
