@@ -321,3 +321,8 @@ The GraphQL queries are adapted from
 (MIT). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the full notice,
 and [docs/upstream.md](docs/upstream.md) for exact source queries and adaptations.
 The upstream package is not installed or executed.
+
+## License
+
+[MIT](LICENSE). Adapted upstream queries keep their own MIT notice in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
