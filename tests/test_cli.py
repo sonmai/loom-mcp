@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -35,6 +36,11 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(find_executable("ffmpeg"), str(candidate))
                 candidate.chmod(0o600)
                 self.assertIsNone(find_executable("ffmpeg"))
+
+    def test_installer_release_matches_package_version(self):
+        root = Path(__file__).resolve().parents[1]
+        project = tomllib.loads((root / "pyproject.toml").read_text())
+        self.assertIn(f"release='v{project['project']['version']}'\n", (root / "install.sh").read_text())
 
 
 if __name__ == "__main__":

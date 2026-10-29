@@ -1,7 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-source_package='git+https://github.com/sonmai/mcp-loom.git'
+release='v0.1.0'
+source_package="git+https://github.com/sonmai/mcp-loom.git@$release"
+constraints_url="https://raw.githubusercontent.com/sonmai/mcp-loom/$release/constraints.txt"
+custom_source=false
 run_setup=true
 
 usage() {
@@ -9,7 +12,9 @@ usage() {
 Install Loom MCP on macOS and guide Keychain/client setup.
 
 Usage: bash install.sh [--source PATH_OR_URL] [--no-setup]
-  --source     Install a reviewed local checkout or another repository revision.
+  --source     Install a reviewed local checkout or another repository revision
+               instead of the pinned release. A local checkout's constraints.txt
+               is applied; other sources resolve dependencies without constraints.
   --no-setup   Install only; do not read Keychain or change client configurations.
   --help       Show this help.
 
@@ -26,6 +31,7 @@ while [ "$#" -gt 0 ]; do
                 exit 1
             fi
             source_package="$2"
+            custom_source=true
             shift 2
             ;;
         --no-setup) run_setup=false; shift ;;
@@ -92,8 +98,22 @@ if [ -z "$uv_program" ] || [ -z "$ffmpeg_program" ]; then
     exit 1
 fi
 
+constraint_arguments=()
+if [ "$custom_source" = false ]; then
+    constraints_file="$(mktemp)"
+    trap 'rm -f "$constraints_file"' EXIT
+    curl -fsSL "$constraints_url" -o "$constraints_file"
+    constraint_arguments=(--constraints "$constraints_file")
+elif [ -f "$source_package/constraints.txt" ]; then
+    constraint_arguments=(--constraints "$source_package/constraints.txt")
+else
+    echo 'No constraints.txt for this source; dependencies resolve to their latest compatible versions.' >&2
+fi
+
 printf '\nInstalling Loom MCP from %s\n' "$source_package"
-"$uv_program" tool install --python 3.12 --reinstall "$source_package"
+"$uv_program" tool install --python 3.12 --reinstall ${constraint_arguments[@]+"${constraint_arguments[@]}"} "$source_package"
+# The EXIT trap does not run once setup replaces this process with exec.
+[ -z "${constraints_file:-}" ] || rm -f "$constraints_file"
 tool_directory="$("$uv_program" tool dir --bin)"
 executable="$tool_directory/loom-mcp"
 if [ ! -x "$executable" ]; then

@@ -13,7 +13,7 @@ and scope.
 On your Mac, paste this into Terminal:
 
 ```sh
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/sonmai/mcp-loom/main/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/sonmai/mcp-loom/v0.1.0/install.sh)"
 ```
 
 The installer checks prerequisites, asks before installing anything missing,
@@ -24,6 +24,8 @@ installs Loom MCP, and opens a setup wizard:
 3. Once setup saves the cookie in Keychain, restart your clients.
 
 That is all. No clone, Python setup, path editing, or config-file editing is needed.
+The installer pins a tagged release and its locked dependency versions, so every
+install of a release gets the same code that was verified.
 The wizard supports Claude Code, Claude Desktop, Codex CLI, Gemini CLI, Cursor,
 and VS Code's Default profile. Existing settings are preserved; changed files
 are backed up. Replacing an existing `loom` entry requires confirmation.
@@ -64,7 +66,7 @@ internet connection. Client apps themselves must already be installed.
 Download and read the script before running it:
 
 ```sh
-curl -fsSLo install-loom.sh https://raw.githubusercontent.com/sonmai/mcp-loom/main/install.sh
+curl -fsSLo install-loom.sh https://raw.githubusercontent.com/sonmai/mcp-loom/v0.1.0/install.sh
 less install-loom.sh
 bash install-loom.sh
 ```
@@ -72,14 +74,16 @@ bash install-loom.sh
 Already have uv and ffmpeg? Install the package and open setup directly:
 
 ```sh
-uv tool install git+https://github.com/sonmai/mcp-loom.git
+uv tool install git+https://github.com/sonmai/mcp-loom.git@v0.1.0
 "$(uv tool dir --bin)/loom-mcp" setup
 ```
 
 [Official uv installation guide](https://docs.astral.sh/uv/guides/tools/).
 To install without changing Keychain or client settings, use
 `bash install-loom.sh --no-setup`. A reviewed local checkout can be installed with
-`bash install.sh --source /absolute/path/to/mcp-loom`.
+`bash install.sh --source /absolute/path/to/mcp-loom`; its `constraints.txt` is applied.
+The manual `uv tool install` above does not apply the locked versions of
+indirect dependencies; the installer does.
 
 </details>
 
@@ -220,12 +224,8 @@ runtime-tested, using that local-checkout launch command.
 
 ## Update
 
-Rerun the one-command installer to update and check your setup, or update only
-the package:
-
-```sh
-uv tool install --reinstall git+https://github.com/sonmai/mcp-loom.git
-```
+Rerun the one-command installer from the [Install](#install) section. It names the
+latest release, installs it with locked dependencies, and checks your setup.
 
 Restart the client to use the updated server. The Keychain cookie and media cache
 are retained.
@@ -286,6 +286,18 @@ For development, run the focused standard-library tests from a local checkout:
 ```sh
 uv run --directory /absolute/path/to/mcp-loom python -m unittest discover -s tests
 ```
+
+To cut a release, set the same version in `pyproject.toml` and `release` in
+`install.sh` (a test enforces this), regenerate the constraints, update the
+`v…` URLs in this README, and push a matching tag:
+
+```sh
+uv export --frozen --no-hashes --no-dev --no-emit-project -o constraints.txt
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+`uv tool install` ignores `uv.lock`, so `constraints.txt` is how the installer
+applies the locked versions. The installer downloads it from the release tag.
 
 ## Limits and attribution
 
