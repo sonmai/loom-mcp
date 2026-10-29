@@ -9,6 +9,8 @@ from pathlib import Path
 from uuid import uuid4
 
 from loom_mcp.executables import find_executable
+from loom_mcp.chrome import ChromeError, read_chrome_cookie
+from loom_mcp.keychain import KeychainError, store_cookie
 
 
 class SetupError(Exception):
@@ -184,6 +186,35 @@ def setup_cookie() -> bool:
         print("A Loom cookie is already stored in Keychain.")
         if not confirm("Replace it with a fresh cookie?"):
             return True
+    print("\n  1. Import from your signed-in Chrome session (Chrome 144+)")
+    print("  2. Paste a cookie manually")
+    while True:
+        method = input("Choose cookie source (1 or 2; Enter to skip): ").strip()
+        if not method:
+            return False
+        if method in {"1", "2"}:
+            break
+        print("Choose 1 or 2, or press Enter to skip.")
+    if method == "1":
+        print("Open a signed-in https://www.loom.com tab in your usual Chrome profile.")
+        print("Enable chrome://inspect/#remote-debugging in Chrome 144+.")
+        print("Chrome will ask you to Allow a debugging connection (up to 60 seconds).")
+        print("This permission grants broad browser access; setup only reads the Loom session cookie.")
+        if not confirm("Connect to Chrome and save the Loom cookie in Keychain?"):
+            return False
+        try:
+            cookie = read_chrome_cookie()
+            try:
+                store_cookie(cookie)
+            finally:
+                del cookie
+            print("Loom cookie saved in Keychain. The Chrome connection is closed.")
+            print("You can turn remote debugging off again in Chrome.")
+            return True
+        except (ChromeError, KeychainError) as error:
+            print(str(error))
+            if not confirm("Use manual cookie entry instead?"):
+                return False
     print("\nSign in to loom.com in your browser.")
     print("Open DevTools > Application > Cookies > connect.sid and copy only its value.")
     print("The macOS password prompt below hides your input; paste the value there.")
