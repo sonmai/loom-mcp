@@ -6,11 +6,13 @@ from pathlib import Path
 import httpx
 
 from loom_mcp.client import LoomError, check_status, get_mp4_url
-
-FFMPEG = "/opt/homebrew/bin/ffmpeg"
+from loom_mcp.executables import find_executable
 
 
 def extract_frames(video_id: str, timestamps: list[float]) -> list[tuple[float, Path, bytes]]:
+    ffmpeg = find_executable("ffmpeg")
+    if ffmpeg is None:
+        raise LoomError("ffmpeg is missing. Run the installer again or install it with brew install ffmpeg.")
     cache = Path.home() / "Library" / "Caches" / "loom-mcp"
     frame_directory = cache / video_id / "frames"
     frame_directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -26,7 +28,7 @@ def extract_frames(video_id: str, timestamps: list[float]) -> list[tuple[float, 
                 temporary_path = Path(temporary.name)
             try:
                 result = subprocess.run(
-                    [FFMPEG, "-hide_banner", "-loglevel", "error", "-nostdin", "-y",
+                    [ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y",
                      "-ss", str(timestamp), "-i", str(media_path), "-map", "0:v:0",
                      "-frames:v", "1", "-vf", "scale=1280:-2", str(temporary_path)],
                     capture_output=True, timeout=120, check=False,

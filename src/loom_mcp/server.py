@@ -52,7 +52,7 @@ def safe_tool(function):
         except OSError:
             raise ToolError(
                 "Local file or process access failed. Check cache permissions and "
-                "/opt/homebrew/bin/ffmpeg."
+                "the ffmpeg installation."
             ) from None
         except Exception:
             raise ToolError(
