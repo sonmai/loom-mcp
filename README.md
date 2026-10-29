@@ -20,18 +20,38 @@ The installer checks prerequisites, asks before installing anything missing,
 installs Loom MCP, and opens a setup wizard:
 
 1. Choose the local clients you use.
-2. Copy your Loom `connect.sid` cookie from your browser when prompted.
-3. Paste it into macOS's hidden password prompt, then restart your clients.
+2. Choose **Import from Chrome** and follow the permission prompt, or paste a cookie manually.
+3. Once setup saves the cookie in Keychain, restart your clients.
 
 That is all. No clone, Python setup, path editing, or config-file editing is needed.
 The wizard supports Claude Code, Claude Desktop, Codex CLI, Gemini CLI, Cursor,
 and VS Code's Default profile. Existing settings are preserved; changed files
 are backed up. Replacing an existing `loom` entry requires confirmation.
 
-**Finding the cookie:** sign in to [loom.com](https://www.loom.com), open your
-browser's DevTools, select **Application > Cookies > https://www.loom.com**, and
-copy the **value** of `connect.sid`. The installer never reads browser storage.
-Your cookie is stored only in macOS Keychain, never in a client config or repository.
+**Import from Chrome (144+):** keep a signed-in [Loom](https://www.loom.com)
+tab open in your usual Chrome profile. Open `chrome://inspect/#remote-debugging`
+and enable remote debugging. Choose Chrome import in setup, then click **Allow**
+in Chrome's connection dialog within 60 seconds. No separate profile or new login
+is needed if that profile is already signed in. Setup reads the Loom session,
+disconnects, and saves it in Keychain. You can turn remote debugging off afterward.
+
+Chrome grants broad debugging permission. This importer only lists tab metadata,
+attaches to a Loom tab, and reads cookies applicable to `https://www.loom.com/`;
+it saves only `connect.sid`. It does not execute page scripts, close your tabs,
+or read Chrome's cookie database. It supports the standard Chrome Stable user-data
+location on macOS. If multiple browser contexts have Loom tabs, it asks you to
+keep one context open instead of guessing an account.
+[Chrome connection documentation](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/docs/advanced-usage.md#automatically-connecting-to-a-running-chrome-instance).
+
+**Manual fallback:** sign in to Loom, open your browser's DevTools, select
+**Application > Cookies > https://www.loom.com**, and copy the **value** of
+`connect.sid`. Paste it into setup's hidden password prompt. Older Chrome versions,
+managed browsers that disable debugging, and custom user-data directories can use
+this route. Failed Chrome imports offer manual entry without replacing Keychain.
+
+The imported cookie is written directly through macOS Keychain APIs; it never
+appears in command arguments, environment variables, logs, or temporary files.
+The MCP server continues reading only the Keychain item at runtime.
 
 The installer works on Apple Silicon and Intel Macs. Missing prerequisites are
 installed through [Homebrew](https://brew.sh), with your consent. Homebrew may
@@ -73,7 +93,8 @@ you can also use:
 ```
 
 Choose **0** to refresh only the cookie. Otherwise choose the clients to configure.
-You can keep an existing cookie. Expired cookies can also be replaced directly:
+You can keep an existing cookie or import a fresh one from Chrome using the steps
+above. Expired cookies can also be replaced directly:
 
 ```sh
 security add-generic-password -U -s loom-mcp -a connect.sid -w
@@ -99,6 +120,9 @@ restart is needed for a refreshed cookie. Never paste the cookie into an AI chat
   untouched. Use its manual registration command in your usual shell instead.
 - **Frames need ffmpeg:** rerun the installer, or run `brew install ffmpeg`.
   Both Homebrew locations and executables on PATH are supported.
+- **Chrome import cannot connect:** use Chrome 144+, enable remote debugging,
+  keep a signed-in Loom tab open, and approve Chrome's connection dialog. Setup
+  does not enable debugging itself. Manual entry remains available.
 - **Cookie missing or access denied:** rerun setup and choose cookie-only mode.
   Allow the local process to access the Keychain item if macOS asks.
 

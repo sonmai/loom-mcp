@@ -116,3 +116,30 @@ source-distribution-plus-wheel build with that version. The installer itself
 was retested successfully with the existing uv 0.9.26; it builds directly from
 the checkout. Use current uv for building release distributions. No system uv
 upgrade was performed.
+
+
+## Chrome session import
+
+2026-10-29, branch `feat/chrome-cookie-setup`:
+
+- 22 standard-library tests passed. New coverage exercises CDP messages over an
+  actual socket pair (including fragmented responses), Loom-only cookie selection,
+  denied commands without raw error disclosure, multiple contexts, missing cookies,
+  oversized responses, endpoint validation, connection cleanup, setup consent,
+  and manual fallback. Tests use synthetic values and do not access browser cookies.
+- Native Security.framework create/update was verified with a temporary synthetic
+  Keychain item. Both values were readable using `security find-generic-password`;
+  the temporary item was removed. The sandbox denied Keychain access; the same
+  check succeeded with normal macOS access.
+- After the user enabled remote debugging and allowed the connection, the real
+  Chrome 156 session import succeeded. The cookie was stored directly in Keychain;
+  the CDP connection closed. A subsequent runtime GraphQL request read Keychain
+  and returned the expected sample-video title. No credential values were logged.
+- Wheel build passed with normal macOS access. Its Chrome/Keychain modules and MIT
+  notice are present; the only runtime dependencies remain MCP and HTTPX. Sandboxed
+  uv failed during macOS system-configuration initialization before building.
+- Independent code review found no actionable defects in the final implementation.
+- The new feature is setup-only; MCP tools, their schemas, runtime cookie lookup,
+  and client registrations are unchanged. Earlier Inspector and client acceptance
+  evidence above applies to that unchanged server. Fresh installations and Chrome
+  permission denial in the real UI have not been exercised for this feature.

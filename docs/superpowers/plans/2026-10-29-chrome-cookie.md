@@ -12,17 +12,17 @@ native Security.framework write; unchanged MCP tools and runtime authentication.
 - User approved this design; ask before pushing.
 
 ## Tasks
-- [ ] Add focused tests for a loopback CDP peer: matching Loom cookie, unrelated
+- [x] Add focused tests for a loopback CDP peer: matching Loom cookie, unrelated
   cookie exclusion, permission denial, bounded protocol messages, and disconnect.
-- [ ] Implement `chrome.py`: `read_chrome_cookie() -> str`, validated endpoint,
+- [x] Implement `chrome.py`: `read_chrome_cookie() -> str`, validated endpoint,
   matching Loom tab/context, fixed Network.getCookies URL, secret-free errors.
-- [ ] Implement `keychain.py`: `store_cookie(cookie: str) -> None` with
+- [x] Implement `keychain.py`: `store_cookie(cookie: str) -> None` with
   SecItemUpdate followed by SecItemAdd only on errSecItemNotFound. Use ctypes
   native bindings and release all owned CF objects. No subprocess with secrets.
-- [ ] Extend setup tests for Chrome selection, fallback, and cancellation; add
+- [x] Extend setup tests for Chrome selection, fallback, and cancellation; add
   selection to `setup_cookie`, preserving current manual `save_cookie` behavior.
-- [ ] Document Chrome 144+, enabling debugging, Allow prompt, signed-in Loom tab,
+- [x] Document Chrome 144+, enabling debugging, Allow prompt, signed-in Loom tab,
   broad permission scope, fallback, and cookie refresh.
-- [ ] Run unittest, compile/build, native Keychain temporary-item round trip,
+- [x] Run unittest, compile/build, native Keychain temporary-item round trip,
   and live import if browser consent is available. Record exact verification scope.
-- [ ] Review final diff and commit small steps; do not push without permission.
+- [x] Review final diff and commit small steps; do not push without permission.
