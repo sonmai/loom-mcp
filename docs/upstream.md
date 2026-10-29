@@ -161,10 +161,7 @@ exports to stay within the requested small scope.
 
 ## Approval and verification state
 
-The code is a review draft. No dependency installation, Keychain read, authenticated
-Loom request, Inspector session, client configuration change, or push has occurred.
-Tests are drafted but not executed; there is no passing-test or TDD claim.
-
-After approval: install through uv, verify in MCP Inspector first, then perform
-focused tests and install in the two authorized clients. Capture actual results
-for metadata, transcript, images, and local file existence separately.
+The initial code draft was approved for installation. See
+[verification status](verification.md) for checks actually performed and pending work.
+The selected clients are Claude Code (user scope) and Codex CLI. Installation into
+those clients follows successful live verification in Inspector. No push is authorized.

@@ -1,6 +1,7 @@
 # Full code draft for approval
 
-Not installed or runtime-verified. See [upstream research and layout](upstream.md),
+Code approved for installation. See [current verification status](verification.md),
+[upstream research and layout](upstream.md),
 [README and all six client configurations](../README.md), and
 [MIT notice](../THIRD_PARTY_NOTICES.md).
 
