@@ -13,7 +13,7 @@ and scope.
 On your Mac, paste this into Terminal:
 
 ```sh
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/sonmai/mcp-loom/v0.1.0/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/sonmai/loom-mcp/v0.1.1/install.sh)"
 ```
 
 The installer checks prerequisites, asks before installing anything missing,
@@ -66,7 +66,7 @@ internet connection. Client apps themselves must already be installed.
 Download and read the script before running it:
 
 ```sh
-curl -fsSLo install-loom.sh https://raw.githubusercontent.com/sonmai/mcp-loom/v0.1.0/install.sh
+curl -fsSLo install-loom.sh https://raw.githubusercontent.com/sonmai/loom-mcp/v0.1.1/install.sh
 less install-loom.sh
 bash install-loom.sh
 ```
@@ -74,14 +74,14 @@ bash install-loom.sh
 Already have uv and ffmpeg? Install the package and open setup directly:
 
 ```sh
-uv tool install git+https://github.com/sonmai/mcp-loom.git@v0.1.0
+uv tool install git+https://github.com/sonmai/loom-mcp.git@v0.1.1
 "$(uv tool dir --bin)/loom-mcp" setup
 ```
 
 [Official uv installation guide](https://docs.astral.sh/uv/guides/tools/).
 To install without changing Keychain or client settings, use
 `bash install-loom.sh --no-setup`. A reviewed local checkout can be installed with
-`bash install.sh --source /absolute/path/to/mcp-loom`; its `constraints.txt` is applied.
+`bash install.sh --source /absolute/path/to/loom-mcp`; its `constraints.txt` is applied.
 The manual `uv tool install` above does not apply the locked versions of
 indirect dependencies; the installer does.
 
@@ -260,7 +260,7 @@ until removed, including after a cookie expires. There is no cache-management to
 For a local checkout, the original entry point remains available:
 
 ```sh
-uv run --directory /absolute/path/to/mcp-loom loom-mcp
+uv run --directory /absolute/path/to/loom-mcp loom-mcp
 ```
 
 The project uses Python 3.11+, the official MCP SDK, and HTTPX. `uv_build` is the
@@ -284,7 +284,7 @@ Connect using stdio and confirm `tools/list` contains exactly `get_video`,
 For development, run the focused standard-library tests from a local checkout:
 
 ```sh
-uv run --directory /absolute/path/to/mcp-loom python -m unittest discover -s tests
+uv run --directory /absolute/path/to/loom-mcp python -m unittest discover -s tests
 ```
 
 To cut a release, set the same version in `pyproject.toml` and `release` in
@@ -293,7 +293,7 @@ To cut a release, set the same version in `pyproject.toml` and `release` in
 
 ```sh
 uv export --frozen --no-hashes --no-dev --no-emit-project -o constraints.txt
-git tag v0.1.0 && git push origin v0.1.0
+git tag v0.1.1 && git push origin v0.1.1
 ```
 
 `uv tool install` ignores `uv.lock`, so `constraints.txt` is how the installer

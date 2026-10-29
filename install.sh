@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-release='v0.1.0'
-source_package="git+https://github.com/sonmai/mcp-loom.git@$release"
-constraints_url="https://raw.githubusercontent.com/sonmai/mcp-loom/$release/constraints.txt"
+release='v0.1.1'
+source_package="git+https://github.com/sonmai/loom-mcp.git@$release"
+constraints_url="https://raw.githubusercontent.com/sonmai/loom-mcp/$release/constraints.txt"
 custom_source=false
 run_setup=true
 
